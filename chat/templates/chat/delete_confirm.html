@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="centered">
+        <h3>Are you sure you want to delete the room "{{ chat_room.name }}?"</h3>
+        <form method="post">
+            {% csrf_token %}
+            <input type="submit" value="Yes, I am sure" class="danger">
+        </form>
+    </div>
+
+{% endblock %}

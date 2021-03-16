@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Chat room{% endblock %}
+
+{% block header %}
+    <div class="logo">{{ companion.username }}</div>
+    {% if is_moderator %}
+        <div class="settings">
+            <a href="{% url "chat:chat_room_settings" chat_room.slug %}">Chat room settings</a>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <div id="chat"></div>
+    <div id="chat-input">
+        <input id="chat-message-input" type="text">
+        <input id="chat-message-submit" type="submit" value="Send">
+    </div>
+{% endblock %}
+
+{% block domready %}
+      var url = 'ws://' + window.location.host +
+                '/ws/chat/' + '{{ chat_room.slug }}/';
+      var chatSocket = new WebSocket(url);
+
+      var button_id = 0;
+
+    function appendMessage(message, bottom){ // bottom==true <=> append to the bottom
+        var content = message['content'];
+        var author = message['author'];
+        var datetime = message['timestamp'];
+        var message_id = message['id'];
+        var is_read = message['is_read'];
+        console.log(is_read);
+
+        var isMe = author === '{{ request.user }}';
+        var source = isMe? 'me': 'other';
+        var name = isMe? 'Me': author;
+        var $chat = $('#chat');
+
+        var button = '';
+        var link_tag_open = '';
+        var link_tag_close = '';
+
+        if (source === 'me'){
+            button_id += 1;
+            button = '<span id="b' + button_id + '" class="dropdown">' +
+                        '<button class="edit-button">[edit]</button>' +
+                        '<div id="myDropdown" class="dropdown-content">' +
+                          '<button class="edit">Edit</button>' +
+                          '<button class="delete">Delete</button>' +
+                        '</div>' +
+                      '</span>';
+        }
+
+        if ((source==='other') && !is_read){
+            chatSocket.send(JSON.stringify({'id': message_id,
+                                            'command': 'read_message'}));
+        }
+
+        link_tag_open = '<a href="http://' + window.location.host + '/profile/' + author + '">';
+        link_tag_close = '</a>';
+        var is_read_str = ''
+
+        if (is_read){
+            is_read_str = ' ✓';
+        }
+
+        var html_to_append = '<div id="msg' + message_id + '" class="message ' +
+                             source + '">' + link_tag_open +
+                             '<strong>' + name + '</strong> ' + link_tag_close +
+                             '<span class="date">' + datetime +
+                             '</span>' + is_read_str + button + '<br>' + '<span class="msg-content">' +
+                             content + '</span>' + '</div>';
+
+        if (bottom){
+            $chat.append(html_to_append);
+            $chat.scrollTop($chat[0].scrollHeight);
+        }
+        else{
+            $chat.prepend(html_to_append);
+        }
+
+        if (source === 'me'){
+            var $button = $('#b' + button_id);
+            $button.click(function(){
+                $button.find('#myDropdown').css("display", "inline-block");
+            });
+            $edit = $button.find('.edit');
+            $delete = $button.find('.delete');
+            $delete.click(function(){
+                chatSocket.send(JSON.stringify({'id': message_id,
+                                                'command': 'delete_message',
+                                                'initiator': '{{ request.user }}'}));
+                var msg_id = "#msg" + message_id;
+                var $content = $chat.find(msg_id).find(".msg-content");
+                $content.html('deleted');
+                $content.addClass("deleted-msg");
+                $button.find('#myDropdown').css("display","none");
+            });
+
+            $edit.click(function(){
+                var msg_id = "#msg" + message_id;
+                var $content = $chat.find(msg_id).find(".msg-content");
+                var msg = $content.html();
+                var $dropdown = $button.find('#myDropdown');
+                $dropdown.css("display","none");
+                $button.css("display","none");
+                $content.html('<input type="text">');
+                var $edit_input = $content.find("input");
+                $edit_input.val(msg);
+                $edit_input.focus();
+                $edit_input.keyup(function(e) {
+                    if (e.which === 13) {
+                        $content.html($edit_input.val());
+                        chatSocket.send(JSON.stringify({'id': message_id,
+                                                        'message_content': $content.html(),
+                                                        'command': 'edit_message',
+                                                        'initiator': '{{ request.user }}'}));
+                        $button.css("display", "inline-block");
+                        $dropdown.css("display","none");
+                    }
+                });
+            });
+        }
+    };
+
+    chatSocket.onmessage = function(e) {
+        var data = JSON.parse(e.data);
+        if (data.command === "fetch_messages"){
+            var messages = data.messages;
+            var i;
+            for (i = 0; i < messages.length; i++){
+                message = messages[i];
+                appendMessage(message, false);
+            }
+            var $chat = $('#chat');
+            $chat.scrollTop($chat[0].scrollHeight);
+            return;
+        };
+        if (data.command === "add_messages"){
+            var messages = data.messages;
+            var i;
+            var $chat = $('#chat');
+            var $current_top_element = $chat.children().first();
+            for (i=0; i < messages.length; i++){
+                message = messages[i];
+                appendMessage(message, false);
+            }
+            var previous_height = 0;
+            $current_top_element.prevAll().each(function() {
+                previous_height += $(this).outerHeight();
+            });
+            // prevent from scrolling all the way to the top
+            $chat.scrollTop(previous_height);
+            return;
+        };
+        var message = data.message;
+        appendMessage(message, true);
+    };
+
+    chatSocket.onopen = function(e) {
+        chatSocket.send(JSON.stringify({'command': 'fetch_messages'}));
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closes unexpectedly');
+    };
+    var $input = $('#chat-message-input');
+    var $submit = $('#chat-message-submit');
+
+    $submit.click(function(){
+        var message = $input.val();
+        if (message) {
+            chatSocket.send(JSON.stringify({'message': message,
+                                            'command': 'new_message',
+                                            'from': '{{ request.user }}'}));
+            $input.val('');
+            $input.focus();
+        }
+    });
+
+    $input.focus();
+    $input.keyup(function(e) {
+        if (e.which === 13) {
+            //submit with enter / return key
+            $submit.click();
+        }
+    });
+    var $chat = $('#chat');
+    var order = 0;
+    $chat.scroll(function() {
+        if($chat.scrollTop() === 0) {
+            order += 1;
+           chatSocket.send(JSON.stringify({'command': 'add_messages',
+                                           'order': order}));
+        }
+    });
+{% endblock %}

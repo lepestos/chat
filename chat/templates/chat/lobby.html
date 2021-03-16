@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="split left">
+        <div class="centered">
+            <h3>Enter a chat room to join:</h3>
+            <div class="ui-widget autocomplete">
+                <input id="room-name-input" type="text">
+            </div>
+            <input id="room-name-submit" type="button" value="Enter">
+        </div>
+    </div>
+    <div class="split right">
+        <div class="centered">
+            {% for chat_room in object_list %}
+                <p>
+                    <a href="{% url "chat:chat_room" chat_room.slug %}">
+                    {{ chat_room }}
+                    {% if chat_room.owner == request.user %}
+                    <span style="color:gray">(owner)</span>
+                    {% endif %}
+                    </a>
+                </p>
+            {% empty %}
+                <p>No chat rooms available</p>
+            {% endfor %}
+            {% if is_paginated %}
+                <div class="pagination">
+                    <span class="page-links">
+                        {% if page_obj.has_previous %}
+                            <a href="{{ request.path }}?page={{ page_obj.previous_page_number }}">«</a>
+                        {% endif %}
+                        <span class="page-current">
+                            {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}
+                        </span>
+                        {% if page_obj.has_next %}
+                            <a href="{{ request.path }}?page={{ page_obj.next_page_number }}">»</a>
+                        {% endif %}
+                    </span>
+                </div>
+            {% endif %}
+            <br>
+            <button id="create-room">Create a new room</button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block domready %}
+    var $input = $('#room-name-input');
+    var $submit = $('#room-name-submit');
+    var $create = $('#create-room');
+    var chat_rooms = [];
+    var lc_name_to_slug = {};
+    {% for chat_room in chat_rooms %}
+        chat_rooms.push('{{ chat_room.name }}');
+        lc_name_to_slug['{{ chat_room.name }}'.toLowerCase()] = '{{ chat_room.slug }}';
+    {% endfor %}
+    $input.focus()
+    $input.keyup(function(e){
+        if (e.keyCode==13){
+            $submit.click();
+        }
+        $input.autocomplete({
+            source: chat_rooms
+        });
+    });
+    $submit.click(function(e) {
+        v = $input.val().toLowerCase();
+        if (v in lc_name_to_slug){
+            window.location.pathname = '/chat/' + lc_name_to_slug[v] + '/';
+        }
+    });
+    $create.click(function(e) {
+        window.location.pathname = '/create/';
+    });
+
+{% endblock %}

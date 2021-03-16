@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <div class="logo"><a href="{% url "chat:chat_room" chat_room.slug %}">{{ chat_room.name }}</div>
+{% endblock %}
+
+{% block content %}
+    <div class="split left">
+        <div class="centered">
+            <h2>User: <a href="{% url "chat:profile" user.username %}">{{ user.username }}</a></h2>
+            {% if is_banned %}
+                <p style="color:red">
+                    <strong>Banned.</strong>
+                <form method="post">
+                    {% csrf_token %}
+                    <input name="unban" type="submit" value="Unban">
+                </form>
+                </p>
+            {% else %}
+                <p style="color:green">
+                    <strong>Not banned.</strong>
+                <form method="post">
+                    {% csrf_token %}
+                    <input name="ban" type="submit" value="Ban" class="danger">
+                </form>
+            {% endif %}
+            {% if is_moderator %}
+                <p>Moderator</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input name="unmod" type="submit" value="Revoke moderator permissions" class="danger">
+                </form>
+            {% else %}
+                <p>Regular User</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input name="mod" type="submit" value="Grant moderator permissions">
+                </form>
+            {% endif %}
+            <p><strong>{{ messages_count }} messages</strong></p>
+            {% for message in messages %}
+            <p>{{ message.content }}</p>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

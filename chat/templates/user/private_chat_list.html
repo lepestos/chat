@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="split left">
+        <div class="centered chat-list">
+            {% for chat in object_list %}
+                <p>
+                    {% for participant in chat.participants.all %}
+                        {% if participant != request.user %}
+                            <a class='message-list' href="{% url "chat:private_chat" participant.username %}">
+                                <span class="name-highlight">{{ participant.username }}</span><br><br>
+                                <span class="message-highlight">{{chat.messages.all.last}}</span>
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+                </p>
+            {% empty %}
+                <p>No conversations yet.</p>
+            {% endfor %}
+            {% if is_paginated %}
+                <div class="pagination">
+                    <span class="page-links">
+                        {% if page_obj.has_previous %}
+                            <a href="{{ request.path }}?page={{ page_obj.previous_page_number }}">«</a>
+                        {% endif %}
+                        <span class="page-current">
+                            {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}
+                        </span>
+                        {% if page_obj.has_next %}
+                            <a href="{{ request.path }}?page={{ page_obj.next_page_number }}">»</a>
+                        {% endif %}
+                    </span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="split left">
+        <div class="centered">
+            {% if denied %}
+                <h4>Unfortunately, you have exceeded the chat room limit (3).</h4>
+                <p>You can try deleting existing chat rooms</p>
+            {% else %}
+                <h3>Create a new chat room:</h3>
+                <form method="post" autocomplete="off">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <input type="submit" value="Submit">
+                </form>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block domready %}
+    var $name = $('#id_name');
+    var $slug = $('#id_slug');
+    // dynamically generate slug
+    $name.keyup(function(e){
+        $slug.val($name.val().toLowerCase().replace(/[^\w ]+/g,'').replace(/ +/g,'-'));
+    });
+
+{% endblock %}

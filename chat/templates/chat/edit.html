@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <div class="logo"><a href="{% url "chat:chat_room" chat_room.slug %}">{{ chat_room.name }}</div>
+{% endblock %}
+
+{% block content %}
+    <div class="split left">
+        <div class="left-margin">
+            <form method="post">
+                {% csrf_token %}
+                {{ form }}
+                <input type="submit" value="Confirm">
+            </form>
+        </div>
+    </div>
+    <div class="split right">
+        <div class="centered">
+            <h3>Press the button below if you want to permanently delete the room:</h3>
+            <form method="post">
+                {% csrf_token %}
+                <input type="submit" name="delete" value="Delete" class="danger">
+            </form>
+        </div>
+    </div>
+{% endblock %}

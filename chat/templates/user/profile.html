@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="split left">
+        <div class="centered">
+            <h3 style="color:green">User: {{ user.username }}</h3>
+            <table>
+                <tr>
+                    <th>First name:</th>
+                    <td>{{ user.first_name }}</td>
+                </tr>
+                <tr>
+                    <th>Last name:</th>
+                    <td>{{ user.last_name }}</td>
+                </tr>
+                <tr>
+                    <th>Email:</th>
+                    <td>{{ user.email }}</td>
+                </tr>
+                <tr>
+                    <th>Date of Birth:</th>
+                    <td>{{ profile.date_of_birth }}</td>
+                </tr>
+            </table>
+            {% if not is_request_user %}
+                {% if not is_friend %}
+                    {% if desires_to_be_a_friend %}
+                        <p style="color:green">Wants to be your friend</p>
+                    {% elif is_desired_friend %}
+                        <p style="color:blue">Pending friend request</p>
+                    {% else %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="submit" name="add_friend" value="Add friend">
+                        </form>
+                    {% endif %}
+                {% else %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="submit" name="remove_friend" value="Remove friend" style="background-color:red">
+                        <input type="submit" name="chat" value="Start private chat">
+                    </form>
+                {% endif %}
+            {% else %}
+                <p>Friend list:</p>
+                <ul>
+                    {% for friend in profile.friends.all %}
+                    <li><a href="{% url "chat:profile" friend.user.username %}">{{ friend.user.username }}</a></li>
+                    {% empty %}
+                    <li>Currently no friends.</li>
+                    {% endfor %}
+                </ul>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="submit" name="edit" value="Edit">
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    <div class="split right">
+        <div class="centered">
+            {% if is_request_user %}
+                <h3>Incoming friend requests:</h3>
+                <table>
+                    {% for person in profile.incoming_requests.all %}
+                    <tr>
+                        <td>
+                            <a class="user" href="{% url "chat:profile" person.user.username %}">
+                                {{ person.user.username }}
+                            </a>
+                        </td>
+                        <td>
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="person" value="{{ person.user.username }}">
+                                <input type="submit" name="accept_friend" value="Accept">
+                                <input type="submit" name="decline_friend" value="Decline" style="background:red">
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <li>Currently no friend requests.</li>
+                    {% endfor %}
+                </table>
+                <br>
+                <a href="{% url "chat:private_chat_list" %}">Private Messages</a>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
